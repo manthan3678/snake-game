@@ -1,16 +1,32 @@
 const board = document.querySelector(".board");
 const blockHeight = 50;
 const blockWidth = 50;
+const startBtn = document.querySelector(".btn-start");
+const restartbtn = document.querySelector(".btn-restart");
+const modal = document.querySelector(".modal");
+const startGameModal = document.querySelector(".start-game");
+const gameOverModel = document.querySelector(".game-over");
+
+const highScoreElement = document.querySelector("#high-score");
+const scoreElement = document.querySelector("#score");
+const timeElement = document.querySelector("#time");
 
 const cols = Math.floor(board.clientWidth / blockWidth);
 const rows = Math.floor(board.clientHeight / blockHeight);
 const blocks = [];
+
+let highScore = localStorage.getItem("high-score") || 0;
+let score = 0;
+let time = `00-00`;
+highScoreElement.innerText = highScore;
 let intervelId = null;
+let timerIntervalId = null;
+
 let food = {
   x: Math.floor(Math.random() * rows),
   y: Math.floor(Math.random() * cols),
 };
-const snake = [
+let snake = [
   // x: row
   // y: col
   {
@@ -36,15 +52,12 @@ for (let row = 0; row < rows; row++) {
     blocks[`${row}-${col}`] = block;
   }
 }
+snake.forEach((segments) => {
+  blocks[`${segments.x}-${segments.y}`].classList.add("fill");
+});
+blocks[`${food.x}-${food.y}`].classList.add("food");
 
 function render() {
-  snake.forEach((segments) => {
-    blocks[`${segments.x}-${segments.y}`].classList.add("fill");
-  });
-  blocks[`${food.x}-${food.y}`].classList.add("food");
-}
-
-intervelId = setInterval(() => {
   let head = null;
   if (direction === "left") {
     head = { x: snake[0].x, y: snake[0].y - 1 };
@@ -57,28 +70,90 @@ intervelId = setInterval(() => {
   }
 
   if (head.x < 0 || head.x >= rows || head.y < 0 || head.y >= cols) {
-    alert("Game Over");
     clearInterval(intervelId);
+    modal.style.display = "flex";
+    startGameModal.style.display = "none";
+    gameOverModel.style.display = "flex";
+    return;
   }
+  // Add new head
+  snake.unshift(head);
 
   if (head.x == food.x && head.y == food.y) {
-    blocks[`${food.x}-${food.y}`].classList.remove("food");
     food = {
       x: Math.floor(Math.random() * rows),
       y: Math.floor(Math.random() * cols),
     };
-    blocks[`${food.x}-${food.y}`].classList.add("food");
-    snake.unshift(head);
+    score += 10;
+    scoreElement.innerText = score;
+
+    if (score > highScore) {
+      highScore = score;
+      localStorage.setItem("high-score", highScore.toString());
+    }
+  } else {
+    snake.pop();
   }
 
-  snake.forEach((segments) => {
-    blocks[`${segments.x}-${segments.y}`].classList.remove("fill");
+  // Clear board
+  Object.values(blocks).forEach((block) => {
+    block.classList.remove("fill", "food");
+  });
+  // Draw snake
+  snake.forEach((segment) => {
+    blocks[`${segment.x}-${segment.y}`].classList.add("fill");
   });
 
-  snake.unshift(head);
-  snake.pop();
-  render();
-}, 400);
+  // Draw food
+  blocks[`${food.x}-${food.y}`].classList.add("food");
+}
+
+startBtn.addEventListener("click", () => {
+  clearInterval(timerIntervalId);
+  clearInterval(intervelId);
+  modal.style.display = "none";
+  intervelId = setInterval(() => {
+    render();
+  }, 300);
+  timerIntervalId = setInterval(() => {
+    let [min, sec] = time.split("-").map(Number);
+
+    sec++;
+
+    if (sec === 60) {
+      min++;
+      sec = 0;
+    }
+
+    if (sec < 10) sec = "0" + sec;
+    if (min < 10) min = "0" + min;
+
+    time = min + "-" + sec;
+    timeElement.innerText = time;
+    console.log(timeElement);
+    console.log(time);
+  }, 1000);
+});
+
+restartbtn.addEventListener("click", restartGame);
+function restartGame() {
+  score = 0;
+  scoreElement.innerText = score;
+
+  time = `00-00`;
+  highScoreElement.innerText = highScore;
+
+  modal.style.display = "none";
+  snake = [{ x: 2, y: 3 }];
+  food = {
+    x: Math.floor(Math.random() * rows),
+    y: Math.floor(Math.random() * cols),
+  };
+
+  intervelId = setInterval(() => {
+    render();
+  }, 300);
+}
 
 addEventListener("keydown", (event) => {
   if (event.key === "ArrowUp") {
